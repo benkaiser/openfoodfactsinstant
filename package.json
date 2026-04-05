@@ -1,0 +1,16 @@
+{
+  "name": "openfoodfacts-au-clientside",
+  "version": "1.0.0",
+  "description": "A condensed, client-side searchable database of Australian food products from [Open Food Facts](https://world.openfoodfacts.org/).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "csv-parse": "^6.2.1",
+    "papaparse": "^5.5.3"
+  }
+}

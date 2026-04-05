@@ -1,0 +1,20 @@
+# Node
+node_modules/
+
+# Data files (raw downloads, not the final parquet)
+*.csv
+*.csv.gz
+*.tsv
+*.tsv.gz
+*.jsonl
+*.jsonl.gz
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
