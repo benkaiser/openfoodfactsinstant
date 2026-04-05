@@ -1,0 +1,79 @@
+[
+  {
+    "id": "france",
+    "name": "France",
+    "flag": "🇫🇷",
+    "products": 100000,
+    "sizeMB": 3.3
+  },
+  {
+    "id": "united-states",
+    "name": "United States",
+    "flag": "🇺🇸",
+    "products": 100000,
+    "sizeMB": 2.4
+  },
+  {
+    "id": "germany",
+    "name": "Germany",
+    "flag": "🇩🇪",
+    "products": 100000,
+    "sizeMB": 3
+  },
+  {
+    "id": "spain",
+    "name": "Spain",
+    "flag": "🇪🇸",
+    "products": 100000,
+    "sizeMB": 2.9
+  },
+  {
+    "id": "italy",
+    "name": "Italy",
+    "flag": "🇮🇹",
+    "products": 100000,
+    "sizeMB": 2.7
+  },
+  {
+    "id": "united-kingdom",
+    "name": "United Kingdom",
+    "flag": "🇬🇧",
+    "products": 100000,
+    "sizeMB": 2.9
+  },
+  {
+    "id": "canada",
+    "name": "Canada",
+    "flag": "🇨🇦",
+    "products": 100000,
+    "sizeMB": 2.6
+  },
+  {
+    "id": "switzerland",
+    "name": "Switzerland",
+    "flag": "🇨🇭",
+    "products": 100000,
+    "sizeMB": 2.8
+  },
+  {
+    "id": "belgium",
+    "name": "Belgium",
+    "flag": "🇧🇪",
+    "products": 99922,
+    "sizeMB": 2.8
+  },
+  {
+    "id": "australia",
+    "name": "Australia",
+    "flag": "🇦🇺",
+    "products": 71326,
+    "sizeMB": 1.4
+  },
+  {
+    "id": "netherlands",
+    "name": "Netherlands",
+    "flag": "🇳🇱",
+    "products": 61179,
+    "sizeMB": 1.3
+  }
+]

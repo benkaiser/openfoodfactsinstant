@@ -6,549 +6,248 @@
   <title>Open Food Facts Instant Search</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
-    :root {
-      --bg: #f8f9fa;
-      --card-bg: #fff;
-      --text: #212529;
-      --text-muted: #6c757d;
-      --border: #dee2e6;
-      --primary: #0d6efd;
-      --primary-light: #e7f1ff;
-      --grade-a: #038141;
-      --grade-b: #85bb2f;
-      --grade-c: #fecb02;
-      --grade-d: #ee8100;
-      --grade-e: #e63e11;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
-
-    .header {
-      background: var(--card-bg);
-      border-bottom: 1px solid var(--border);
-      padding: 1rem 1.5rem;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-
-    .header h1 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin-bottom: 0.75rem;
-    }
-
-    .header h1 span {
-      color: var(--text-muted);
-      font-weight: 400;
-    }
-
-    .search-box {
-      display: flex;
-      gap: 0.5rem;
-      max-width: 700px;
-    }
-
-    .search-box input {
-      flex: 1;
-      padding: 0.625rem 1rem;
-      font-size: 1rem;
-      border: 2px solid var(--border);
-      border-radius: 8px;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    .search-box input:focus {
-      border-color: var(--primary);
-    }
-
-    .scan-btn {
-      padding: 0.625rem 0.875rem;
-      font-size: 1.25rem;
-      border: 2px solid var(--border);
-      border-radius: 8px;
-      background: var(--card-bg);
-      cursor: pointer;
-      transition: all 0.15s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 1;
-    }
-
-    .scan-btn:hover {
-      border-color: var(--primary);
-      background: var(--primary-light);
-    }
-
-    .scan-btn.active {
-      border-color: var(--primary);
-      background: var(--primary);
-      color: #fff;
-    }
-
-    .camera-container {
-      max-width: 700px;
-      margin: 0.75rem 0 0;
-      border-radius: 10px;
-      overflow: hidden;
-      display: none;
-    }
-
-    .camera-container.visible {
-      display: block;
-    }
-
-    #scanner-region {
-      width: 100%;
-    }
-
-    /* Override html5-qrcode default styles */
-    #scanner-region img[alt="Info icon"] { display: none !important; }
-    #scanner-region__header_message { display: none !important; }
-
-    .status {
-      padding: 0.5rem 1.5rem;
-      font-size: 0.875rem;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .status .count {
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .results {
-      padding: 0 1.5rem 2rem;
-      max-width: 1200px;
-    }
-
-    .product-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1rem;
-      margin-bottom: 0.75rem;
-      display: grid;
-      grid-template-columns: 64px 1fr;
-      gap: 1rem;
-      transition: box-shadow 0.15s;
-    }
-
-    .product-card:hover {
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-
-    .product-img {
-      width: 64px;
-      height: 64px;
-      border-radius: 6px;
-      object-fit: contain;
-      background: #f0f0f0;
-    }
-
-    .product-img-placeholder {
-      width: 64px;
-      height: 64px;
-      border-radius: 6px;
-      background: #f0f0f0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #ccc;
-      font-size: 1.5rem;
-    }
-
-    .product-info h3 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-    }
-
-    .product-info .common-name {
-      font-size: 0.875rem;
-      color: var(--text-muted);
-      margin-bottom: 0.25rem;
-    }
-
-    .product-info .barcode {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      font-family: monospace;
-      margin-bottom: 0.5rem;
-    }
-
-    .nutrition-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.375rem;
-    }
-
-    .nutrition-tag {
-      font-size: 0.75rem;
-      padding: 0.2rem 0.5rem;
-      background: #f0f0f0;
-      border-radius: 4px;
-      white-space: nowrap;
-    }
-
-    .grade {
-      display: inline-block;
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: #fff;
-      text-transform: uppercase;
-    }
-
-    .grade-a { background: var(--grade-a); }
-    .grade-b { background: var(--grade-b); }
-    .grade-c { background: var(--grade-c); color: #333; }
-    .grade-d { background: var(--grade-d); }
-    .grade-e { background: var(--grade-e); }
-
-    .loading-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(255,255,255,0.95);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 999;
-    }
-
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid var(--border);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-bottom: 1rem;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .loading-text {
-      font-size: 1rem;
-      color: var(--text-muted);
-    }
-
-    @media (max-width: 600px) {
-      .header { padding: 0.75rem 1rem; }
-      .results { padding: 0 1rem 2rem; }
-      .product-card { grid-template-columns: 48px 1fr; gap: 0.75rem; }
-      .product-img, .product-img-placeholder { width: 48px; height: 48px; }
-    }
+    :root { --bg:#f8f9fa; --card:#fff; --text:#212529; --muted:#6c757d; --border:#dee2e6; --pri:#0d6efd; --pri-lt:#e7f1ff; --ga:#038141; --gb:#85bb2f; --gc:#fecb02; --gd:#ee8100; --ge:#e63e11; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    .country-picker{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem}
+    .country-picker h1{font-size:1.5rem;margin-bottom:.5rem}
+    .country-picker p{color:var(--muted);margin-bottom:1.5rem}
+    .country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.75rem;max-width:800px;width:100%}
+    .country-card{background:var(--card);border:2px solid var(--border);border-radius:10px;padding:1rem;cursor:pointer;text-align:center;transition:all .15s}
+    .country-card:hover{border-color:var(--pri);box-shadow:0 2px 8px rgba(0,0,0,.08);transform:translateY(-1px)}
+    .country-card .flag{font-size:2rem;margin-bottom:.375rem}
+    .country-card .cname{font-weight:600;font-size:.95rem}
+    .country-card .meta{font-size:.75rem;color:var(--muted);margin-top:.25rem}
+    .header{background:var(--card);border-bottom:1px solid var(--border);padding:1rem 1.5rem;position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+    .header-top{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem}
+    .header h1{font-size:1.25rem;font-weight:600;flex:1} .header h1 span{color:var(--muted);font-weight:400}
+    .back-btn{padding:.375rem .75rem;font-size:.85rem;border:1px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer;color:var(--muted);transition:all .15s;text-decoration:none}
+    .back-btn:hover{border-color:var(--pri);color:var(--pri)}
+    .search-box{display:flex;gap:.5rem;max-width:700px}
+    .search-box input{flex:1;padding:.625rem 1rem;font-size:1rem;border:2px solid var(--border);border-radius:8px;outline:none;transition:border-color .15s}
+    .search-box input:focus{border-color:var(--pri)}
+    .scan-btn{padding:.625rem .875rem;font-size:1.25rem;border:2px solid var(--border);border-radius:8px;background:var(--card);cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;line-height:1}
+    .scan-btn:hover{border-color:var(--pri);background:var(--pri-lt)} .scan-btn.active{border-color:var(--pri);background:var(--pri);color:#fff}
+    .camera-container{max-width:700px;margin:.75rem 0 0;border-radius:10px;overflow:hidden;display:none} .camera-container.visible{display:block}
+    #scanner-region img[alt="Info icon"]{display:none!important} #scanner-region__header_message{display:none!important}
+    .status{padding:.5rem 1.5rem;font-size:.875rem;color:var(--muted);display:flex;align-items:center;gap:.5rem} .status .count{font-weight:600;color:var(--text)}
+    .results{padding:0 1.5rem 2rem;max-width:1200px}
+    .product-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:.75rem;display:grid;grid-template-columns:64px 1fr;gap:1rem;transition:box-shadow .15s}
+    .product-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    .product-img{width:64px;height:64px;border-radius:6px;object-fit:contain;background:#f0f0f0}
+    .product-img-placeholder{width:64px;height:64px;border-radius:6px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:1.5rem}
+    .product-info h3{font-size:1rem;font-weight:600;margin-bottom:.25rem}
+    .product-info h3 a{color:inherit;text-decoration:none} .product-info h3 a:hover{text-decoration:underline}
+    .product-info .barcode{font-size:.8rem;color:var(--muted);font-family:monospace;margin-bottom:.5rem}
+    .nutrition-row{display:flex;flex-wrap:wrap;gap:.375rem}
+    .nutrition-tag{font-size:.75rem;padding:.2rem .5rem;background:#f0f0f0;border-radius:4px;white-space:nowrap}
+    .grade{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.75rem;font-weight:700;color:#fff;text-transform:uppercase}
+    .grade-a{background:var(--ga)} .grade-b{background:var(--gb)} .grade-c{background:var(--gc);color:#333} .grade-d{background:var(--gd)} .grade-e{background:var(--ge)}
+    .scans-tag{font-size:.7rem;color:var(--muted);margin-left:auto;white-space:nowrap}
+    .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999}
+    .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--pri);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:1rem}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-text{font-size:1rem;color:var(--muted)}
+    .hidden{display:none!important}
+    @media(max-width:600px){.header{padding:.75rem 1rem}.results{padding:0 1rem 2rem}.product-card{grid-template-columns:48px 1fr;gap:.75rem}.product-img,.product-img-placeholder{width:48px;height:48px}.country-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}}
   </style>
 </head>
 <body>
-  <div class="loading-overlay" id="loading">
+  <div class="country-picker" id="country-picker">
+    <h1>Open Food Facts <span>Instant</span></h1>
+    <p>Select a country to search its food products</p>
+    <div class="country-grid" id="country-grid"></div>
+  </div>
+  <div class="loading-overlay hidden" id="loading">
     <div class="spinner"></div>
     <div class="loading-text" id="loading-text">Loading database...</div>
   </div>
-
-  <div class="header">
-    <h1>Open Food Facts <span>Instant</span></h1>
-    <div class="search-box">
-      <input type="text" id="search" placeholder="Search by product name or barcode..." autocomplete="off" disabled>
-      <button class="scan-btn" id="scan-btn" title="Scan barcode with camera" disabled>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
-          <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
-          <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
-          <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
-          <line x1="7" y1="12" x2="17" y2="12"/>
-          <line x1="7" y1="8" x2="9" y2="8"/>
-          <line x1="7" y1="16" x2="9" y2="16"/>
-          <line x1="11" y1="8" x2="17" y2="8"/>
-          <line x1="11" y1="16" x2="17" y2="16"/>
-        </svg>
-      </button>
+  <div class="hidden" id="search-ui">
+    <div class="header">
+      <div class="header-top">
+        <a class="back-btn" id="back-btn" href="#">← Countries</a>
+        <h1 id="country-title">Open Food Facts <span>Instant</span></h1>
+      </div>
+      <div class="search-box">
+        <input type="text" id="search" placeholder="Search by product name or barcode..." autocomplete="off">
+        <button class="scan-btn" id="scan-btn" title="Scan barcode with camera">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+            <path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+            <line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="8" x2="9" y2="8"/>
+            <line x1="7" y1="16" x2="9" y2="16"/><line x1="11" y1="8" x2="17" y2="8"/>
+            <line x1="11" y1="16" x2="17" y2="16"/>
+          </svg>
+        </button>
+      </div>
+      <div class="camera-container" id="camera-container"><div id="scanner-region"></div></div>
     </div>
-    <div class="camera-container" id="camera-container">
-      <div id="scanner-region"></div>
-    </div>
+    <div class="status" id="status"></div>
+    <div class="results" id="results"></div>
   </div>
-
-  <div class="status" id="status"></div>
-  <div class="results" id="results"></div>
-
   <script type="module">
-    // DuckDB-WASM CDN
     import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm';
 
-    const loadingEl = document.getElementById('loading');
-    const loadingText = document.getElementById('loading-text');
-    const searchInput = document.getElementById('search');
-    const resultsEl = document.getElementById('results');
-    const statusEl = document.getElementById('status');
-    const scanBtn = document.getElementById('scan-btn');
-    const cameraContainer = document.getElementById('camera-container');
+    const IMG_PREFIX = 'https://images.openfoodfacts.org/images/products/';
+    const OFF_URL = 'https://world.openfoodfacts.org/product/';
 
-    let conn;
-    let totalProducts = 0;
-    let searchTimeout;
-    let ftsReady = false;
-    let scanner = null;
-    let scanning = false;
+    const $ = id => document.getElementById(id);
+    const countryPicker = $('country-picker'), countryGrid = $('country-grid');
+    const loadingEl = $('loading'), loadingText = $('loading-text');
+    const searchUI = $('search-ui'), searchInput = $('search');
+    const resultsEl = $('results'), statusEl = $('status');
+    const scanBtn = $('scan-btn'), cameraContainer = $('camera-container');
+    const backBtn = $('back-btn'), countryTitle = $('country-title');
 
-    // ─── Barcode Scanner ────────────────────────────────
+    let db, conn, totalProducts = 0, searchTimeout, ftsReady = false;
+    let scanner = null, scanning = false;
 
-    async function toggleScanner() {
-      if (scanning) {
-        await stopScanner();
-      } else {
-        await startScanner();
-      }
+    // ─── Country Picker ─────────────────────────────────
+    async function loadCountryPicker() {
+      const res = await fetch('data/countries.json');
+      const countries = await res.json();
+      countryGrid.innerHTML = countries.map(c => `
+        <div class="country-card" data-id="${c.id}">
+          <div class="flag">${c.flag}</div>
+          <div class="cname">${c.name}</div>
+          <div class="meta">${c.products.toLocaleString()} products · ${c.sizeMB} MB</div>
+        </div>`).join('');
+      countryGrid.addEventListener('click', e => {
+        const card = e.target.closest('.country-card');
+        if (card) { const c = countries.find(x => x.id === card.dataset.id); if (c) loadCountry(c); }
+      });
+      return countries;
     }
 
-    async function startScanner() {
-      scanning = true;
-      scanBtn.classList.add('active');
-      cameraContainer.classList.add('visible');
+    backBtn.addEventListener('click', e => {
+      e.preventDefault();
+      searchUI.classList.add('hidden');
+      countryPicker.classList.remove('hidden');
+      if (conn) { conn.close(); conn = null; }
+      ftsReady = false; searchInput.value = ''; resultsEl.innerHTML = '';
+      history.pushState(null, '', window.location.pathname);
+    });
 
+    async function loadCountry(country) {
+      countryPicker.classList.add('hidden');
+      loadingEl.classList.remove('hidden');
+      searchUI.classList.add('hidden');
+      history.pushState(null, '', `?country=${country.id}`);
+      countryTitle.innerHTML = `${country.flag} ${country.name} <span>· Open Food Facts</span>`;
       try {
-        scanner = new Html5Qrcode('scanner-region');
-
-        await scanner.start(
-          { facingMode: 'environment' },
-          {
-            fps: 10,
-            qrbox: { width: 300, height: 150 },
-            aspectRatio: 1.777,
-            formatsToSupport: [
-              Html5QrcodeSupportedFormats.EAN_13,
-              Html5QrcodeSupportedFormats.EAN_8,
-              Html5QrcodeSupportedFormats.UPC_A,
-              Html5QrcodeSupportedFormats.UPC_E,
-              Html5QrcodeSupportedFormats.CODE_128,
-              Html5QrcodeSupportedFormats.CODE_39,
-            ],
-          },
-          onBarcodeDetected,
-          () => {} // ignore scan failures
-        );
-      } catch (err) {
-        console.error('Camera error:', err);
-        statusEl.innerHTML = `<span style="color: var(--grade-e)">Camera access denied or unavailable.</span>`;
-        await stopScanner();
-      }
-    }
-
-    async function stopScanner() {
-      scanning = false;
-      scanBtn.classList.remove('active');
-      cameraContainer.classList.remove('visible');
-
-      if (scanner) {
-        try {
-          await scanner.stop();
-        } catch {}
-        scanner = null;
-      }
-    }
-
-    function onBarcodeDetected(decodedText) {
-      // Put the barcode into the search field and search
-      searchInput.value = decodedText;
-      doSearch(decodedText);
-      // Stop scanning after a successful read
-      stopScanner();
-    }
-
-    scanBtn.addEventListener('click', toggleScanner);
-
-    // ─── DuckDB Init ────────────────────────────────────
-
-    async function init() {
-      try {
-        // 1. Initialize DuckDB
-        loadingText.textContent = 'Initializing search engine...';
-        const bundles = duckdb.getJsDelivrBundles();
-        const bundle = await duckdb.selectBundle(bundles);
-        const workerUrl = URL.createObjectURL(
-          new Blob([`importScripts("${bundle.mainWorker}");`], { type: 'text/javascript' })
-        );
-        const worker = new Worker(workerUrl);
-        const logger = new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING);
-        const db = new duckdb.AsyncDuckDB(logger, worker);
-        await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
-        URL.revokeObjectURL(workerUrl);
-
+        if (!db) {
+          loadingText.textContent = 'Initializing search engine...';
+          const bundles = duckdb.getJsDelivrBundles();
+          const bundle = await duckdb.selectBundle(bundles);
+          const workerUrl = URL.createObjectURL(new Blob([`importScripts("${bundle.mainWorker}");`], {type:'text/javascript'}));
+          const worker = new Worker(workerUrl);
+          db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING), worker);
+          await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+          URL.revokeObjectURL(workerUrl);
+        }
         conn = await db.connect();
-
-        // 2. Load data
-        loadingText.textContent = 'Downloading product database...';
-        const res = await fetch('data/products.json');
-        const jsonText = await res.text();
-
-        loadingText.textContent = 'Loading products into search engine...';
-        await db.registerFileText('products.json', jsonText);
-        await conn.query(`
-          CREATE TABLE products AS
-          SELECT * FROM read_json_auto('products.json', maximum_object_size=20000000)
-        `);
-
+        loadingText.textContent = `Downloading ${country.name} products (${country.sizeMB} MB)...`;
+        const res = await fetch(`data/${country.id}.parquet`);
+        const buf = new Uint8Array(await res.arrayBuffer());
+        loadingText.textContent = `Loading ${country.products.toLocaleString()} products...`;
+        await db.registerFileBuffer('products.parquet', buf);
+        await conn.query(`CREATE TABLE products AS SELECT * FROM 'products.parquet'`);
         const countResult = await conn.query('SELECT count(*) as cnt FROM products');
         totalProducts = Number(countResult.toArray()[0].cnt);
-
-        // 3. Create FTS index
         loadingText.textContent = 'Building search index...';
-        await conn.query("INSTALL fts");
-        await conn.query("LOAD fts");
-
-        // Add a rowid for FTS
-        await conn.query(`
-          CREATE TABLE products_fts AS
-          SELECT row_number() OVER () as id, * FROM products
-        `);
+        await conn.query("INSTALL fts"); await conn.query("LOAD fts");
+        await conn.query(`CREATE TABLE products_fts AS SELECT row_number() OVER () as id, * FROM products`);
         await conn.query('DROP TABLE products');
         await conn.query('ALTER TABLE products_fts RENAME TO products');
-
-        await conn.query(`
-          PRAGMA create_fts_index('products', 'id', 'name', 'common_name', 'code',
-            stemmer='english', stopwords='english', strip_accents=1, overwrite=1)
-        `);
+        await conn.query(`PRAGMA create_fts_index('products', 'id', 'n', 'c', stemmer='english', stopwords='english', strip_accents=1, overwrite=1)`);
         ftsReady = true;
-
-        // Done
-        loadingEl.style.display = 'none';
-        searchInput.disabled = false;
-        scanBtn.disabled = false;
+        loadingEl.classList.add('hidden');
+        searchUI.classList.remove('hidden');
         searchInput.focus();
         statusEl.innerHTML = `<span class="count">${totalProducts.toLocaleString()}</span> products loaded. Start typing to search.`;
-
-        // Show some initial results
         await doSearch('');
-      } catch (err) {
-        loadingText.textContent = `Error: ${err.message}`;
-        console.error(err);
-      }
+      } catch (err) { loadingText.textContent = `Error: ${err.message}`; console.error(err); }
     }
 
-    // ─── Search ─────────────────────────────────────────
+    // ─── Barcode Scanner ────────────────────────────────
+    async function toggleScanner() { scanning ? await stopScanner() : await startScanner(); }
+    async function startScanner() {
+      scanning = true; scanBtn.classList.add('active'); cameraContainer.classList.add('visible');
+      try {
+        scanner = new Html5Qrcode('scanner-region');
+        await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:300,height:150},aspectRatio:1.777,
+          formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39]},
+          t=>{searchInput.value=t;doSearch(t);stopScanner();},()=>{});
+      } catch(err){console.error('Camera:',err);statusEl.innerHTML=`<span style="color:var(--ge)">Camera unavailable.</span>`;await stopScanner();}
+    }
+    async function stopScanner(){scanning=false;scanBtn.classList.remove('active');cameraContainer.classList.remove('visible');if(scanner){try{await scanner.stop();}catch{}scanner=null;}}
+    scanBtn.addEventListener('click', toggleScanner);
 
+    // ─── Search ─────────────────────────────────────────
     async function doSearch(query) {
       if (!conn) return;
-
       const q = query.trim();
-      let sql;
-      let params = [];
-
+      let sql, params = [];
       if (!q) {
-        // Show first 50 products
-        sql = `SELECT * FROM products LIMIT 50`;
+        sql = `SELECT * FROM products ORDER BY sc DESC NULLS LAST LIMIT 50`;
       } else if (/^\d+$/.test(q)) {
-        // Barcode search (numeric input) — substring match
-        sql = `SELECT * FROM products WHERE code LIKE '%' || $1 || '%' LIMIT 100`;
+        sql = `SELECT * FROM products WHERE c LIKE '%' || $1 || '%' ORDER BY sc DESC NULLS LAST LIMIT 100`;
         params = [q];
       } else if (ftsReady) {
-        // Full text search
-        sql = `
-          SELECT p.*, fts_main_products.match_bm25(p.id, $1, fields := 'name,common_name') AS score
-          FROM products p
-          WHERE score IS NOT NULL
-          ORDER BY score
-          LIMIT 100
-        `;
+        sql = `SELECT p.*, fts_main_products.match_bm25(p.id, $1, fields := 'n') AS score FROM products p WHERE score IS NOT NULL ORDER BY score LIMIT 100`;
         params = [q];
       } else {
-        // Fallback LIKE search
-        sql = `SELECT * FROM products WHERE name ILIKE '%' || $1 || '%' OR common_name ILIKE '%' || $1 || '%' LIMIT 100`;
+        sql = `SELECT * FROM products WHERE n ILIKE '%' || $1 || '%' ORDER BY sc DESC NULLS LAST LIMIT 100`;
         params = [q];
       }
-
       try {
         let result;
-        if (params.length > 0) {
-          const stmt = await conn.prepare(sql);
-          result = await stmt.query(params[0]);
-          await stmt.close();
-        } else {
-          result = await conn.query(sql);
-        }
-
-        const rows = result.toArray().map(r => ({...r}));
-        renderResults(rows, q);
+        if (params.length > 0) { const stmt = await conn.prepare(sql); result = await stmt.query(params[0]); await stmt.close(); }
+        else { result = await conn.query(sql); }
+        renderResults(result.toArray().map(r => ({...r})), q);
       } catch (err) {
-        // If FTS fails, fall back to LIKE
         console.warn('Search error, falling back:', err);
         try {
-          const fallback = `SELECT * FROM products WHERE name ILIKE '%' || $1 || '%' OR common_name ILIKE '%' || $1 || '%' OR code LIKE '%' || $1 || '%' LIMIT 100`;
-          const stmt = await conn.prepare(fallback);
-          const result = await stmt.query(q);
-          await stmt.close();
-          const rows = result.toArray().map(r => ({...r}));
-          renderResults(rows, q);
-        } catch (e2) {
-          console.error('Fallback search error:', e2);
-        }
+          const fb = `SELECT * FROM products WHERE n ILIKE '%' || $1 || '%' OR c LIKE '%' || $1 || '%' ORDER BY sc DESC NULLS LAST LIMIT 100`;
+          const stmt = await conn.prepare(fb); const result = await stmt.query(q); await stmt.close();
+          renderResults(result.toArray().map(r => ({...r})), q);
+        } catch (e2) { console.error('Fallback error:', e2); }
       }
     }
 
     // ─── Rendering ──────────────────────────────────────
-
     function renderResults(rows, query) {
       statusEl.innerHTML = query
-        ? `<span class="count">${rows.length}</span> results for "<strong>${escapeHtml(query)}</strong>"${rows.length === 100 ? ' (showing first 100)' : ''}`
-        : `Showing <span class="count">${rows.length}</span> of ${totalProducts.toLocaleString()} products`;
-
-      resultsEl.innerHTML = rows.map(r => `
-        <div class="product-card">
-          ${r.img_sm
-            ? `<img class="product-img" src="${escapeHtml(r.img_sm)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=product-img-placeholder>?</div>'">`
-            : '<div class="product-img-placeholder">?</div>'}
+        ? `<span class="count">${rows.length}</span> results for "<strong>${esc(query)}</strong>"${rows.length >= 100 ? ' (first 100)' : ''}`
+        : `Showing <span class="count">${rows.length}</span> of ${totalProducts.toLocaleString()} products (by popularity)`;
+      resultsEl.innerHTML = rows.map(r => {
+        const imgUrl = r.i ? IMG_PREFIX + r.i : '';
+        const offUrl = r.c ? OFF_URL + r.c : '';
+        return `<div class="product-card">
+          ${imgUrl ? `<img class="product-img" src="${esc(imgUrl)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=product-img-placeholder>?</div>'">` : '<div class="product-img-placeholder">?</div>'}
           <div class="product-info">
-            <h3>${escapeHtml(r.name || 'Unknown product')}</h3>
-            ${r.common_name ? `<div class="common-name">${escapeHtml(r.common_name)}</div>` : ''}
-            ${r.code ? `<div class="barcode">${escapeHtml(String(r.code))}</div>` : ''}
+            <h3>${offUrl ? `<a href="${esc(offUrl)}" target="_blank" rel="noopener">${esc(r.n||'Unknown product')}</a>` : esc(r.n||'Unknown product')}</h3>
+            ${r.c ? `<div class="barcode">${esc(String(r.c))}</div>` : ''}
             <div class="nutrition-row">
-              ${r.grade ? `<span class="grade grade-${r.grade}">${r.grade}</span>` : ''}
-              ${nutritionTag('Energy', r.kj, 'kJ')}
-              ${nutritionTag('Fat', r.fat, 'g')}
-              ${nutritionTag('Sat. Fat', r.sat_fat, 'g')}
-              ${nutritionTag('Carbs', r.carbs, 'g')}
-              ${nutritionTag('Sugars', r.sugars, 'g')}
-              ${nutritionTag('Fiber', r.fiber, 'g')}
-              ${nutritionTag('Protein', r.protein, 'g')}
-              ${nutritionTag('Salt', r.salt, 'g')}
+              ${r.g ? `<span class="grade grade-${r.g}">${r.g}</span>` : ''}
+              ${nt('Energy',r.e,'kcal')}${nt('Fat',r.f,'g')}${nt('Sat.Fat',r.sf,'g')}${nt('Carbs',r.cb,'g')}${nt('Sugars',r.su,'g')}${nt('Fiber',r.fi,'g')}${nt('Protein',r.p,'g')}${nt('Salt',r.sa,'g')}
+              ${r.sc ? `<span class="scans-tag">${Number(r.sc).toLocaleString()} scans</span>` : ''}
             </div>
           </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
     }
+    function nt(l,v,u){return v==null||v===''?'':`<span class="nutrition-tag">${l}: ${Number(v).toFixed(1)}${u}</span>`;}
+    function esc(s){return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):'';}
+    searchInput.addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => doSearch(searchInput.value), 150); });
 
-    function nutritionTag(label, value, unit) {
-      if (value === null || value === undefined || value === '') return '';
-      return `<span class="nutrition-tag">${label}: ${Number(value).toFixed(1)}${unit}</span>`;
+    // ─── Init ───────────────────────────────────────────
+    async function init() {
+      const countries = await loadCountryPicker();
+      const params = new URLSearchParams(window.location.search);
+      const cid = params.get('country');
+      if (cid) { const c = countries.find(x => x.id === cid); if (c) loadCountry(c); }
     }
-
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    // Debounced search
-    searchInput.addEventListener('input', () => {
-      clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => doSearch(searchInput.value), 150);
-    });
-
     init();
   </script>
 </body>

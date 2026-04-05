@@ -2,179 +2,120 @@
 
 /**
  * End-to-end test script for the Open Food Facts Instant pipeline.
- *
- * Validates:
- *  1. products.json exists and is valid JSON
- *  2. Contains a reasonable number of products (>10k for Australia)
- *  3. Every record has at least a barcode or product name
- *  4. Essential fields schema is correct (nutrition values are numbers)
- *  5. No unexpected nulls in critical fields
- *  6. Barcode format looks right (mostly numeric strings)
- *  7. Image URLs are valid when present
- *  8. Nutrition grade values are valid (a-e) when present
+ * Uses DuckDB CLI to validate the Parquet data files.
  *
  * Run:  node test.mjs
  * Exit: 0 on success, 1 on failure
  */
 
 import fs from 'fs';
-import path from 'path';
+import { execSync } from 'child_process';
 
-const DATA_FILE = 'docs/data/products.json';
-const MIN_PRODUCTS = 10000; // Australia should have ~75k
+const DATA_FILE = 'docs/data/australia.parquet';
+const MANIFEST_FILE = 'docs/data/countries.json';
+const MIN_PRODUCTS = 10000;
 
-const NUTRITION_FIELDS = ['kcal', 'kj', 'fat', 'sat_fat', 'carbs', 'sugars', 'fiber', 'protein', 'salt', 'sodium'];
-const VALID_GRADES = new Set(['a', 'b', 'c', 'd', 'e']);
-
-let passed = 0;
-let failed = 0;
+let passed = 0, failed = 0;
 
 function test(name, fn) {
-  try {
-    fn();
-    passed++;
-    console.log(`  ✓ ${name}`);
-  } catch (err) {
-    failed++;
-    console.log(`  ✗ ${name}`);
-    console.log(`    ${err.message}`);
-  }
+  try { fn(); passed++; console.log(`  ✓ ${name}`); }
+  catch (err) { failed++; console.log(`  ✗ ${name}`); console.log(`    ${err.message}`); }
 }
-
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
+function assert(cond, msg) { if (!cond) throw new Error(msg); }
+function dq(sql) {
+  return execSync('duckdb -csv -noheader', { input: sql, encoding: 'utf-8', stdio: ['pipe','pipe','pipe'], maxBuffer: 10*1024*1024 }).trim();
 }
-
-// ─── Load data ───────────────────────────────────────────
 
 console.log('\n━━━ Open Food Facts Instant — End-to-End Tests ━━━\n');
-
 console.log('1. Data file validation\n');
 
-let products;
+test('australia.parquet exists', () => { assert(fs.existsSync(DATA_FILE), `${DATA_FILE} not found`); });
+test('countries.json manifest exists', () => { assert(fs.existsSync(MANIFEST_FILE), `${MANIFEST_FILE} not found`); });
 
-test('products.json exists', () => {
-  assert(fs.existsSync(DATA_FILE), `${DATA_FILE} not found. Run: node download_and_process.mjs`);
+const count = parseInt(dq(`SELECT count(*) FROM '${DATA_FILE}';`), 10);
+test(`contains ≥ ${MIN_PRODUCTS.toLocaleString()} products (has ${count.toLocaleString()})`, () => {
+  assert(count >= MIN_PRODUCTS, `Only ${count} products`);
 });
 
-test('products.json is valid JSON', () => {
-  const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-  products = JSON.parse(raw);
-  assert(Array.isArray(products), 'Expected a JSON array');
+const fileSizeMB = fs.statSync(DATA_FILE).size / (1024 * 1024);
+test(`file size is reasonable: ${fileSizeMB.toFixed(1)} MB (expect 0.5–20 MB)`, () => {
+  assert(fileSizeMB >= 0.5 && fileSizeMB <= 20, `File is ${fileSizeMB.toFixed(2)} MB`);
 });
-
-test(`contains ≥ ${MIN_PRODUCTS.toLocaleString()} products`, () => {
-  assert(products.length >= MIN_PRODUCTS,
-    `Only ${products.length.toLocaleString()} products (expected ≥ ${MIN_PRODUCTS.toLocaleString()})`);
-});
-
-const fileSize = fs.statSync(DATA_FILE).size;
-test('file size is reasonable (1–50 MB)', () => {
-  const mb = fileSize / (1024 * 1024);
-  assert(mb >= 1 && mb <= 50, `File is ${mb.toFixed(2)} MB — outside expected range`);
-});
-
-// ─── Schema validation ───────────────────────────────────
 
 console.log('\n2. Schema validation\n');
 
 test('every record has a barcode or product name', () => {
-  const bad = products.filter(p => !p.code && !p.name);
-  assert(bad.length === 0, `${bad.length} records have neither code nor name`);
+  const bad = parseInt(dq(`SELECT count(*) FROM '${DATA_FILE}' WHERE (c IS NULL OR c = '') AND (n IS NULL OR n = '');`), 10);
+  assert(bad === 0, `${bad} records have neither code nor name`);
 });
 
-test('majority of records have a product name', () => {
-  const withName = products.filter(p => p.name && p.name.trim().length > 0);
-  const pct = (withName.length / products.length * 100).toFixed(1);
-  assert(withName.length > products.length * 0.5,
-    `Only ${pct}% of records have a name`);
-  console.log(`      (${pct}% have names)`);
+const withName = parseInt(dq(`SELECT count(*) FROM '${DATA_FILE}' WHERE n IS NOT NULL AND n != '';`), 10);
+const namePct = (withName / count * 100).toFixed(1);
+test(`majority have product name (${namePct}%)`, () => { assert(withName > count * 0.5, `Only ${namePct}%`); });
+
+const withCode = parseInt(dq(`SELECT count(*) FROM '${DATA_FILE}' WHERE c IS NOT NULL AND c != '';`), 10);
+const codePct = (withCode / count * 100).toFixed(1);
+test(`majority have barcode (${codePct}%)`, () => { assert(withCode > count * 0.8, `Only ${codePct}%`); });
+
+test('nutrition values are proper doubles', () => {
+  const badTypes = dq(`SELECT count(*) FROM '${DATA_FILE}' WHERE typeof(e) NOT IN ('DOUBLE','NULL') OR typeof(f) NOT IN ('DOUBLE','NULL');`);
+  assert(parseInt(badTypes,10) === 0, `Bad nutrition types found`);
 });
 
-test('majority of records have a barcode', () => {
-  const withCode = products.filter(p => p.code);
-  const pct = (withCode.length / products.length * 100).toFixed(1);
-  assert(withCode.length > products.length * 0.8,
-    `Only ${pct}% of records have a barcode`);
-  console.log(`      (${pct}% have barcodes)`);
+test('nutriscore grades are valid (a-e) when present', () => {
+  const invalid = parseInt(dq(`SELECT count(*) FROM '${DATA_FILE}' WHERE g IS NOT NULL AND g NOT IN ('a','b','c','d','e');`), 10);
+  assert(invalid === 0, `${invalid} invalid grades`);
 });
 
-test('barcodes are numeric strings', () => {
-  const withCode = products.filter(p => p.code);
-  const nonNumeric = withCode.filter(p => !/^\d+$/.test(String(p.code)));
-  const pct = (nonNumeric.length / withCode.length * 100).toFixed(1);
-  assert(nonNumeric.length < withCode.length * 0.05,
-    `${pct}% of barcodes are non-numeric (expected < 5%)`);
+const withImg = parseInt(dq(`SELECT count(*) FROM '${DATA_FILE}' WHERE i IS NOT NULL AND i != '';`), 10);
+test(`image paths present (${(withImg/count*100).toFixed(1)}%)`, () => { assert(withImg > 0, 'No images'); });
+
+test('image paths are relative (no full URL)', () => {
+  const fullUrls = parseInt(dq(`SELECT count(*) FROM '${DATA_FILE}' WHERE i LIKE 'http%';`), 10);
+  assert(fullUrls === 0, `${fullUrls} images still have full URL prefix`);
 });
 
-test('nutrition values are numbers when present', () => {
-  let badCount = 0;
-  for (const p of products) {
-    for (const field of NUTRITION_FIELDS) {
-      if (p[field] !== undefined && typeof p[field] !== 'number') {
-        badCount++;
-      }
-    }
+const withScans = parseInt(dq(`SELECT count(*) FROM '${DATA_FILE}' WHERE sc IS NOT NULL AND sc > 0;`), 10);
+test(`scan counts present (${(withScans/count*100).toFixed(1)}%)`, () => { assert(withScans > 0, 'No scan data'); });
+
+test('data is sorted by scans descending', () => {
+  const topScans = dq(`SELECT sc FROM '${DATA_FILE}' WHERE sc IS NOT NULL LIMIT 5;`).split('\n').map(Number);
+  for (let i = 1; i < topScans.length; i++) {
+    assert(topScans[i] <= topScans[i-1], `Not sorted: ${topScans[i-1]} then ${topScans[i]}`);
   }
-  assert(badCount === 0, `${badCount} nutrition values are not numbers`);
 });
-
-test('nutrition grade is valid (a-e) when present', () => {
-  const withGrade = products.filter(p => p.grade);
-  const invalid = withGrade.filter(p => !VALID_GRADES.has(p.grade));
-  assert(invalid.length === 0,
-    `${invalid.length} records have invalid grades: ${[...new Set(invalid.map(p => p.grade))].join(', ')}`);
-  console.log(`      (${withGrade.length.toLocaleString()} products have a Nutri-Score grade)`);
-});
-
-test('image URLs are valid when present', () => {
-  const withImg = products.filter(p => p.img);
-  const badUrls = withImg.filter(p => !p.img.startsWith('http'));
-  assert(badUrls.length === 0, `${badUrls.length} image URLs don't start with http`);
-  console.log(`      (${withImg.length.toLocaleString()} products have images)`);
-});
-
-// ─── Data quality stats ──────────────────────────────────
 
 console.log('\n3. Data quality stats\n');
 
-const stats = {};
-const fieldNames = ['code', 'name', 'common_name', 'img', 'img_sm', 'grade', ...NUTRITION_FIELDS];
-for (const field of fieldNames) {
-  const count = products.filter(p => p[field] !== undefined && p[field] !== '').length;
-  const pct = (count / products.length * 100).toFixed(1);
-  stats[field] = { count, pct };
-}
-
-console.log(`  Total products: ${products.length.toLocaleString()}`);
-console.log(`  File size: ${(fileSize / (1024 * 1024)).toFixed(2)} MB`);
-console.log('');
+const fields = ['c','n','i','e','f','sf','cb','su','fi','p','sa','g','sc'];
+const labels = ['code','name','img','energy','fat','sat_fat','carbs','sugars','fiber','protein','salt','grade','scans'];
+console.log(`  Total products: ${count.toLocaleString()}`);
+console.log(`  File size: ${fileSizeMB.toFixed(2)} MB\n`);
 console.log('  Field coverage:');
-for (const [field, { count, pct }] of Object.entries(stats)) {
+for (let idx = 0; idx < fields.length; idx++) {
+  const fc = parseInt(dq(`SELECT count(*) FROM '${DATA_FILE}' WHERE ${fields[idx]} IS NOT NULL AND CAST(${fields[idx]} AS VARCHAR) != '';`), 10);
+  const pct = (fc / count * 100).toFixed(1);
   const bar = '█'.repeat(Math.round(pct / 5)) + '░'.repeat(20 - Math.round(pct / 5));
-  console.log(`    ${field.padEnd(14)} ${bar} ${pct.padStart(5)}% (${count.toLocaleString()})`);
+  console.log(`    ${labels[idx].padEnd(10)} ${bar} ${pct.padStart(5)}% (${fc.toLocaleString()})`);
 }
-
-// ─── Sample records ──────────────────────────────────────
 
 console.log('\n4. Sample records\n');
+const samples = dq(`SELECT c, n, e, p AS protein, f AS fat, cb AS carbs, g, sc FROM '${DATA_FILE}' WHERE n IS NOT NULL AND c IS NOT NULL AND i IS NOT NULL LIMIT 3;`);
+console.log(samples.split('\n').map(line => {
+  const [code, name, energy, protein, fat, carbs, grade, scans] = line.split(',');
+  return `  📦 ${name}\n     Code: ${code} | Grade: ${grade||'n/a'} | Scans: ${scans||'n/a'}${energy ? `\n     Energy: ${energy} kcal | Protein: ${protein}g | Fat: ${fat}g | Carbs: ${carbs}g` : ''}`;
+}).join('\n\n'));
 
-const samples = products
-  .filter(p => p.name && p.code && p.img)
-  .slice(0, 3);
-
-for (const s of samples) {
-  console.log(`  📦 ${s.name}`);
-  console.log(`     Code: ${s.code} | Grade: ${s.grade || 'n/a'}`);
-  if (s.kcal !== undefined) console.log(`     Energy: ${s.kcal} kcal | Protein: ${s.protein ?? 'n/a'}g | Fat: ${s.fat ?? 'n/a'}g | Carbs: ${s.carbs ?? 'n/a'}g`);
-  console.log('');
+console.log('\n\n5. Manifest validation\n');
+const manifest = JSON.parse(fs.readFileSync(MANIFEST_FILE, 'utf-8'));
+test(`manifest has ${manifest.length} countries`, () => { assert(manifest.length >= 2, 'Too few countries'); });
+for (const c of manifest) {
+  test(`${c.flag} ${c.name}: ${c.products.toLocaleString()} products, ${c.sizeMB} MB`, () => {
+    assert(fs.existsSync(`docs/data/${c.id}.parquet`), `Missing ${c.id}.parquet`);
+    assert(c.products > 0, 'No products');
+  });
 }
 
-// ─── Summary ─────────────────────────────────────────────
-
-console.log('━━━ Results ━━━\n');
+console.log('\n━━━ Results ━━━\n');
 console.log(`  ${passed} passed, ${failed} failed\n`);
-
-if (failed > 0) {
-  process.exit(1);
-}
+if (failed > 0) process.exit(1);

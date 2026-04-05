@@ -20,7 +20,8 @@
 
 import { chromium } from 'playwright';
 import { createServer } from 'http';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
+import { execSync } from 'child_process';
 import { join, extname } from 'path';
 
 const DOCS_DIR = 'docs';
@@ -33,6 +34,7 @@ const MIME_TYPES = {
   '.json': 'application/json',
   '.css': 'text/css',
   '.wasm': 'application/wasm',
+  '.parquet': 'application/octet-stream',
 };
 
 let passed = 0;
@@ -90,13 +92,17 @@ async function main() {
   console.log('\n━━━ Open Food Facts Instant — Browser E2E Tests ━━━\n');
 
   // Check data exists
-  if (!existsSync('docs/data/products.json')) {
-    console.log('  ⚠ docs/data/products.json not found. Run: node download_and_process.mjs\n');
+  if (!existsSync('docs/data/australia.parquet')) {
+    console.log('  ⚠ docs/data/australia.parquet not found. Run: node download_and_process.mjs\n');
+    process.exit(1);
+  }
+  if (!existsSync('docs/data/countries.json')) {
+    console.log('  ⚠ docs/data/countries.json not found. Run: node download_and_process.mjs\n');
     process.exit(1);
   }
 
-  const dataSize = readFileSync('docs/data/products.json', 'utf-8');
-  const productCount = JSON.parse(dataSize).length;
+  const dataSize = statSync('docs/data/australia.parquet').size;
+  const productCount = parseInt(execSync('duckdb -csv -noheader', { input: "SELECT count(*) FROM 'docs/data/australia.parquet';", encoding: 'utf-8', stdio: ['pipe','pipe','pipe'] }).trim(), 10);
   if (productCount < 100) {
     console.log(`  ⚠ products.json only has ${productCount} products — need real data for browser tests\n`);
     process.exit(1);
@@ -130,7 +136,7 @@ async function main() {
     console.log('1. Page load & initialization\n');
 
     await test('page loads without crash', async () => {
-      const response = await page.goto(`http://localhost:${PORT}/`, { timeout: 10_000 });
+      const response = await page.goto(`http://localhost:${PORT}/?country=australia`, { timeout: 10_000 });
       assert(response.ok(), `HTTP ${response.status()}`);
     });
 
@@ -142,7 +148,7 @@ async function main() {
     await test('DuckDB initializes and search input becomes enabled', async () => {
       await page.waitForFunction(() => {
         const input = document.getElementById('search');
-        return input && !input.disabled;
+        return input && !input.disabled && document.getElementById('search-ui') && !document.getElementById('search-ui').classList.contains('hidden');
       }, { timeout: TIMEOUT });
     });
 
