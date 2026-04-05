@@ -205,7 +205,7 @@
         sql = `SELECT * FROM products WHERE c LIKE '%' || $1 || '%' ORDER BY sc DESC NULLS LAST LIMIT 100`;
         params = [q];
       } else if (ftsReady) {
-        sql = `SELECT p.*, fts_main_products.match_bm25(p.id, $1, fields := 'n') AS score FROM products p WHERE score IS NOT NULL ORDER BY score, sc DESC NULLS LAST LIMIT 100`;
+        sql = `SELECT * FROM (SELECT p.*, fts_main_products.match_bm25(p.id, $1, fields := 'n') AS score FROM products p WHERE score IS NOT NULL ORDER BY score LIMIT 200) ORDER BY sc DESC NULLS LAST LIMIT 100`;
         params = [q];
       } else {
         sql = `SELECT * FROM products WHERE n ILIKE '%' || $1 || '%' ORDER BY sc DESC NULLS LAST LIMIT 100`;
