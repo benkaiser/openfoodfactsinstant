@@ -44,6 +44,13 @@
     .grade{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.75rem;font-weight:700;color:#fff;text-transform:uppercase}
     .grade-a{background:var(--ga)} .grade-b{background:var(--gb)} .grade-c{background:var(--gc);color:#333} .grade-d{background:var(--gd)} .grade-e{background:var(--ge)}
     .scans-tag{font-size:.7rem;color:var(--muted);margin-left:auto;white-space:nowrap}
+    .macro-row{display:flex;align-items:flex-start;gap:.75rem;margin-top:.25rem}
+    .macro-pie{flex-shrink:0;border-radius:50%;overflow:hidden}
+    .macro-details{flex:1;min-width:0}
+    .macro-legend{display:flex;flex-wrap:wrap;gap:.25rem .75rem;font-size:.75rem;margin-bottom:.25rem}
+    .macro-item{display:flex;align-items:center;gap:.25rem;white-space:nowrap}
+    .macro-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+    .per100g{font-size:.65rem;color:var(--muted);margin-bottom:.25rem}
     .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999}
     .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--pri);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:1rem}
     @keyframes spin{to{transform:rotate(360deg)}}
@@ -232,16 +239,70 @@
           <div class="product-info">
             <h3>${offUrl ? `<a href="${esc(offUrl)}" target="_blank" rel="noopener">${esc(r.n||'Unknown product')}</a>` : esc(r.n||'Unknown product')}</h3>
             ${r.c ? `<div class="barcode">${esc(String(r.c))}</div>` : ''}
-            <div class="nutrition-row">
-              ${r.g ? `<span class="grade grade-${r.g}">${r.g}</span>` : ''}
-              ${nt('Energy',r.e,'kcal')}${nt('Fat',r.f,'g')}${nt('Sat.Fat',r.sf,'g')}${nt('Carbs',r.cb,'g')}${nt('Sugars',r.su,'g')}${nt('Fiber',r.fi,'g')}${nt('Protein',r.p,'g')}${nt('Salt',r.sa,'g')}
-              ${r.sc ? `<span class="scans-tag">${Number(r.sc).toLocaleString()} scans</span>` : ''}
-            </div>
+            ${macroPie(r)}
           </div>
         </div>`;
       }).join('');
     }
-    function nt(l,v,u){return v==null||v===''?'':`<span class="nutrition-tag">${l}: ${Number(v).toFixed(1)}${u}</span>`;}
+
+    function macroPie(r) {
+      const fat = r.f || 0, carbs = r.cb || 0, protein = r.p || 0, fiber = r.fi || 0;
+      const hasMacros = fat || carbs || protein || fiber;
+      if (!hasMacros && !r.g && !r.e && !r.sc) return '';
+
+      const total = fat + carbs + protein + fiber;
+      const other = Math.max(0, 100 - total);
+      const segments = [
+        { val: fat, color: '#e8a838', label: 'Fat' },
+        { val: carbs, color: '#5b9bd5', label: 'Carbs' },
+        { val: protein, color: '#c0504d', label: 'Protein' },
+        { val: fiber, color: '#70ad47', label: 'Fiber' },
+        { val: other, color: '#e0e0e0', label: 'Other' },
+      ];
+
+      let pie = '';
+      if (hasMacros) {
+        const all = fat + carbs + protein + fiber + other;
+        let cumulative = 0;
+        const paths = segments.filter(s => s.val > 0).map(s => {
+          const start = cumulative / all;
+          cumulative += s.val;
+          const end = cumulative / all;
+          return pieSlice(start, end, s.color);
+        }).join('');
+        pie = `<svg class="macro-pie" viewBox="-1 -1 2 2" width="48" height="48">${paths}</svg>`;
+      }
+
+      const legend = segments.filter(s => s.val > 0 && s.label !== 'Other')
+        .map(s => `<span class="macro-item"><span class="macro-dot" style="background:${s.color}"></span>${s.label}: ${s.val.toFixed(1)}g</span>`).join('');
+
+      const extras = [
+        r.g ? `<span class="grade grade-${r.g}">${r.g}</span>` : '',
+        r.e != null ? `<span class="nutrition-tag">${Number(r.e).toFixed(0)} kcal</span>` : '',
+        r.sa != null ? `<span class="nutrition-tag">Salt: ${Number(r.sa).toFixed(1)}g</span>` : '',
+        r.su != null ? `<span class="nutrition-tag">Sugars: ${Number(r.su).toFixed(1)}g</span>` : '',
+        r.sf != null ? `<span class="nutrition-tag">Sat.Fat: ${Number(r.sf).toFixed(1)}g</span>` : '',
+        r.sc ? `<span class="scans-tag">${Number(r.sc).toLocaleString()} scans</span>` : '',
+      ].filter(Boolean).join('');
+
+      return `<div class="macro-row">
+        ${pie}
+        <div class="macro-details">
+          ${legend ? `<div class="macro-legend">${legend}</div>` : ''}
+          ${hasMacros ? '<div class="per100g">per 100g/ml</div>' : ''}
+          <div class="nutrition-row">${extras}</div>
+        </div>
+      </div>`;
+    }
+
+    function pieSlice(start, end, color) {
+      if (end - start >= 0.9999) return `<circle r="1" fill="${color}"/>`;
+      const s = [Math.sin(start * 2 * Math.PI), -Math.cos(start * 2 * Math.PI)];
+      const e = [Math.sin(end * 2 * Math.PI), -Math.cos(end * 2 * Math.PI)];
+      const large = end - start > 0.5 ? 1 : 0;
+      return `<path d="M0,0 L${s[0]},${s[1]} A1,1,0,${large},1,${e[0]},${e[1]} Z" fill="${color}"/>`;
+    }
+
     function esc(s){return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):'';}
     searchInput.addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => doSearch(searchInput.value), 150); });
 
