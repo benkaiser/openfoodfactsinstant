@@ -200,15 +200,15 @@
       const q = query.trim();
       let sql, params = [];
       if (!q) {
-        sql = `SELECT * FROM products ORDER BY sc DESC NULLS LAST LIMIT 50`;
+        sql = `SELECT * FROM products ORDER BY CASE WHEN e IS NOT NULL THEN 0 ELSE 1 END, sc DESC NULLS LAST LIMIT 50`;
       } else if (/^\d+$/.test(q)) {
-        sql = `SELECT * FROM products WHERE c LIKE '%' || $1 || '%' ORDER BY sc DESC NULLS LAST LIMIT 100`;
+        sql = `SELECT * FROM products WHERE c LIKE '%' || $1 || '%' ORDER BY CASE WHEN e IS NOT NULL THEN 0 ELSE 1 END, sc DESC NULLS LAST LIMIT 100`;
         params = [q];
       } else if (ftsReady) {
-        sql = `SELECT * FROM (SELECT p.*, fts_main_products.match_bm25(p.id, $1, fields := 'n') AS score FROM products p WHERE score IS NOT NULL ORDER BY score LIMIT 200) ORDER BY sc DESC NULLS LAST LIMIT 100`;
+        sql = `SELECT * FROM (SELECT p.*, fts_main_products.match_bm25(p.id, $1, fields := 'n') AS score FROM products p WHERE score IS NOT NULL ORDER BY score LIMIT 200) ORDER BY CASE WHEN e IS NOT NULL THEN 0 ELSE 1 END, sc DESC NULLS LAST LIMIT 100`;
         params = [q];
       } else {
-        sql = `SELECT * FROM products WHERE n ILIKE '%' || $1 || '%' ORDER BY sc DESC NULLS LAST LIMIT 100`;
+        sql = `SELECT * FROM products WHERE n ILIKE '%' || $1 || '%' ORDER BY CASE WHEN e IS NOT NULL THEN 0 ELSE 1 END, sc DESC NULLS LAST LIMIT 100`;
         params = [q];
       }
       try {
@@ -219,7 +219,7 @@
       } catch (err) {
         console.warn('Search error, falling back:', err);
         try {
-          const fb = `SELECT * FROM products WHERE n ILIKE '%' || $1 || '%' OR c LIKE '%' || $1 || '%' ORDER BY sc DESC NULLS LAST LIMIT 100`;
+          const fb = `SELECT * FROM products WHERE n ILIKE '%' || $1 || '%' OR c LIKE '%' || $1 || '%' ORDER BY CASE WHEN e IS NOT NULL THEN 0 ELSE 1 END, sc DESC NULLS LAST LIMIT 100`;
           const stmt = await conn.prepare(fb); const result = await stmt.query(q); await stmt.close();
           renderResults(result.toArray().map(r => ({...r})), q);
         } catch (e2) { console.error('Fallback error:', e2); }
