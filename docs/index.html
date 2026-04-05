@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Open Food Facts Instant Search</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     :root {
       --bg: #f8f9fa;
@@ -69,6 +70,51 @@
     .search-box input:focus {
       border-color: var(--primary);
     }
+
+    .scan-btn {
+      padding: 0.625rem 0.875rem;
+      font-size: 1.25rem;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      background: var(--card-bg);
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .scan-btn:hover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .scan-btn.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .camera-container {
+      max-width: 700px;
+      margin: 0.75rem 0 0;
+      border-radius: 10px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .camera-container.visible {
+      display: block;
+    }
+
+    #scanner-region {
+      width: 100%;
+    }
+
+    /* Override html5-qrcode default styles */
+    #scanner-region img[alt="Info icon"] { display: none !important; }
+    #scanner-region__header_message { display: none !important; }
 
     .status {
       padding: 0.5rem 1.5rem;
@@ -220,6 +266,22 @@
     <h1>Open Food Facts <span>Instant</span></h1>
     <div class="search-box">
       <input type="text" id="search" placeholder="Search by product name or barcode..." autocomplete="off" disabled>
+      <button class="scan-btn" id="scan-btn" title="Scan barcode with camera" disabled>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+          <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+          <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+          <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+          <line x1="7" y1="12" x2="17" y2="12"/>
+          <line x1="7" y1="8" x2="9" y2="8"/>
+          <line x1="7" y1="16" x2="9" y2="16"/>
+          <line x1="11" y1="8" x2="17" y2="8"/>
+          <line x1="11" y1="16" x2="17" y2="16"/>
+        </svg>
+      </button>
+    </div>
+    <div class="camera-container" id="camera-container">
+      <div id="scanner-region"></div>
     </div>
   </div>
 
@@ -235,11 +297,83 @@
     const searchInput = document.getElementById('search');
     const resultsEl = document.getElementById('results');
     const statusEl = document.getElementById('status');
+    const scanBtn = document.getElementById('scan-btn');
+    const cameraContainer = document.getElementById('camera-container');
 
     let conn;
     let totalProducts = 0;
     let searchTimeout;
     let ftsReady = false;
+    let scanner = null;
+    let scanning = false;
+
+    // ─── Barcode Scanner ────────────────────────────────
+
+    async function toggleScanner() {
+      if (scanning) {
+        await stopScanner();
+      } else {
+        await startScanner();
+      }
+    }
+
+    async function startScanner() {
+      scanning = true;
+      scanBtn.classList.add('active');
+      cameraContainer.classList.add('visible');
+
+      try {
+        scanner = new Html5Qrcode('scanner-region');
+
+        await scanner.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 300, height: 150 },
+            aspectRatio: 1.777,
+            formatsToSupport: [
+              Html5QrcodeSupportedFormats.EAN_13,
+              Html5QrcodeSupportedFormats.EAN_8,
+              Html5QrcodeSupportedFormats.UPC_A,
+              Html5QrcodeSupportedFormats.UPC_E,
+              Html5QrcodeSupportedFormats.CODE_128,
+              Html5QrcodeSupportedFormats.CODE_39,
+            ],
+          },
+          onBarcodeDetected,
+          () => {} // ignore scan failures
+        );
+      } catch (err) {
+        console.error('Camera error:', err);
+        statusEl.innerHTML = `<span style="color: var(--grade-e)">Camera access denied or unavailable.</span>`;
+        await stopScanner();
+      }
+    }
+
+    async function stopScanner() {
+      scanning = false;
+      scanBtn.classList.remove('active');
+      cameraContainer.classList.remove('visible');
+
+      if (scanner) {
+        try {
+          await scanner.stop();
+        } catch {}
+        scanner = null;
+      }
+    }
+
+    function onBarcodeDetected(decodedText) {
+      // Put the barcode into the search field and search
+      searchInput.value = decodedText;
+      doSearch(decodedText);
+      // Stop scanning after a successful read
+      stopScanner();
+    }
+
+    scanBtn.addEventListener('click', toggleScanner);
+
+    // ─── DuckDB Init ────────────────────────────────────
 
     async function init() {
       try {
@@ -295,6 +429,7 @@
         // Done
         loadingEl.style.display = 'none';
         searchInput.disabled = false;
+        scanBtn.disabled = false;
         searchInput.focus();
         statusEl.innerHTML = `<span class="count">${totalProducts.toLocaleString()}</span> products loaded. Start typing to search.`;
 
@@ -305,6 +440,8 @@
         console.error(err);
       }
     }
+
+    // ─── Search ─────────────────────────────────────────
 
     async function doSearch(query) {
       if (!conn) return;
@@ -363,6 +500,8 @@
         }
       }
     }
+
+    // ─── Rendering ──────────────────────────────────────
 
     function renderResults(rows, query) {
       statusEl.innerHTML = query

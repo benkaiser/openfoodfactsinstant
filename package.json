@@ -4,13 +4,17 @@
   "description": "A condensed, client-side searchable database of Australian food products from [Open Food Facts](https://world.openfoodfacts.org/).",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.mjs",
+    "test:browser": "node test-browser.mjs",
+    "test:all": "node test.mjs && node test-browser.mjs",
+    "process": "node download_and_process.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "csv-parse": "^6.2.1",
-    "papaparse": "^5.5.3"
+    "papaparse": "^5.5.3",
+    "playwright": "^1.59.1"
   }
 }
