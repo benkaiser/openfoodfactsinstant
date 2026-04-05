@@ -119,14 +119,14 @@
       return countries;
     }
 
-    backBtn.addEventListener('click', e => {
+    backBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       searchUI.classList.add('hidden');
       countryPicker.classList.remove('hidden');
       if (conn) {
         try { await conn.query('DROP TABLE IF EXISTS products'); } catch {}
         try { await db.dropFile('products.parquet'); } catch {}
-        conn.close(); conn = null;
+        await conn.close(); conn = null;
       }
       ftsReady = false; searchInput.value = ''; resultsEl.innerHTML = '';
       history.pushState(null, '', window.location.pathname);
