@@ -15,6 +15,7 @@
     .country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.75rem;max-width:800px;width:100%}
     .country-card{background:var(--card);border:2px solid var(--border);border-radius:10px;padding:1rem;cursor:pointer;text-align:center;transition:all .15s}
     .country-card:hover{border-color:var(--pri);box-shadow:0 2px 8px rgba(0,0,0,.08);transform:translateY(-1px)}
+    .country-card.all-countries{grid-column:1/-1;border-color:var(--pri);background:var(--pri-lt)}
     .country-card .flag{font-size:2rem;margin-bottom:.375rem}
     .country-card .cname{font-weight:600;font-size:.95rem}
     .country-card .meta{font-size:.75rem;color:var(--muted);margin-top:.25rem}
@@ -124,7 +125,7 @@
       const res = await fetch('data/countries.json');
       const countries = await res.json();
       countryGrid.innerHTML = countries.map(c => `
-        <div class="country-card" data-id="${c.id}">
+        <div class="country-card${c.id === 'all' ? ' all-countries' : ''}" data-id="${c.id}">
           <div class="flag">${c.flag}</div>
           <div class="cname">${c.name}</div>
           <div class="meta">${c.products.toLocaleString()} products · ${c.sizeMB} MB</div>

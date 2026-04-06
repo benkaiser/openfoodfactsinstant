@@ -1,10 +1,17 @@
 [
   {
+    "id": "all",
+    "name": "All Countries",
+    "flag": "🌍",
+    "products": 1582477,
+    "sizeMB": 43
+  },
+  {
     "id": "france",
     "name": "France",
     "flag": "🇫🇷",
     "products": 584965,
-    "sizeMB": 17.2
+    "sizeMB": 17.1
   },
   {
     "id": "germany",

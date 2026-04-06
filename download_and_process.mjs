@@ -148,6 +148,12 @@ WHERE (code IS NOT NULL AND code != '' OR product_name IS NOT NULL AND product_n
   AND unique_scans_n != '' AND TRY_CAST(unique_scans_n AS INTEGER) > 0;
 
 ${exportStatements}
+
+COPY (
+  SELECT c, n, i, e, f, sf, cb, su, fi, p, sa, g, sc
+  FROM staging
+  ORDER BY sc DESC NULLS LAST
+) TO '${OUTPUT_DIR}/all.parquet' (FORMAT PARQUET, COMPRESSION ZSTD);
 `;
 
   console.log('  Loading CSV into memory and exporting...');
@@ -188,6 +194,26 @@ ${exportStatements}
   }
 
   manifest.sort((a, b) => b.products - a.products);
+
+  // Add "All Countries" entry
+  const allFile = `${OUTPUT_DIR}/all.parquet`;
+  const allStat = statSync(allFile);
+  const allSizeMB = allStat.size / (1024 * 1024);
+  const allCount = parseInt(execSync('duckdb -csv -noheader', {
+    input: `SELECT count(*) FROM '${allFile}';`,
+    encoding: 'utf-8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  }).trim(), 10);
+  console.log(`  🌍 All Countries: ${allCount.toLocaleString()} products (${allSizeMB.toFixed(1)} MB)`);
+
+  manifest.unshift({
+    id: 'all',
+    name: 'All Countries',
+    flag: '🌍',
+    products: allCount,
+    sizeMB: Math.round(allSizeMB * 10) / 10,
+  });
+
   writeFileSync(`${OUTPUT_DIR}/countries.json`, JSON.stringify(manifest, null, 2));
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
