@@ -4,7 +4,7 @@
     "name": "France",
     "flag": "🇫🇷",
     "products": 584965,
-    "sizeMB": 17.1
+    "sizeMB": 17.2
   },
   {
     "id": "germany",
@@ -75,5 +75,138 @@
     "flag": "🇦🇺",
     "products": 19984,
     "sizeMB": 0.5
+  },
+  {
+    "id": "morocco",
+    "name": "Morocco",
+    "flag": "🇲🇦",
+    "products": 19589,
+    "sizeMB": 0.5
+  },
+  {
+    "id": "ireland",
+    "name": "Ireland",
+    "flag": "🇮🇪",
+    "products": 19494,
+    "sizeMB": 0.6
+  },
+  {
+    "id": "poland",
+    "name": "Poland",
+    "flag": "🇵🇱",
+    "products": 18444,
+    "sizeMB": 0.5
+  },
+  {
+    "id": "romania",
+    "name": "Romania",
+    "flag": "🇷🇴",
+    "products": 17335,
+    "sizeMB": 0.4
+  },
+  {
+    "id": "portugal",
+    "name": "Portugal",
+    "flag": "🇵🇹",
+    "products": 13183,
+    "sizeMB": 0.4
+  },
+  {
+    "id": "austria",
+    "name": "Austria",
+    "flag": "🇦🇹",
+    "products": 12200,
+    "sizeMB": 0.3
+  },
+  {
+    "id": "india",
+    "name": "India",
+    "flag": "🇮🇳",
+    "products": 11596,
+    "sizeMB": 0.2
+  },
+  {
+    "id": "czech-republic",
+    "name": "Czech Republic",
+    "flag": "🇨🇿",
+    "products": 10790,
+    "sizeMB": 0.3
+  },
+  {
+    "id": "bulgaria",
+    "name": "Bulgaria",
+    "flag": "🇧🇬",
+    "products": 10586,
+    "sizeMB": 0.3
+  },
+  {
+    "id": "sweden",
+    "name": "Sweden",
+    "flag": "🇸🇪",
+    "products": 10489,
+    "sizeMB": 0.3
+  },
+  {
+    "id": "mexico",
+    "name": "Mexico",
+    "flag": "🇲🇽",
+    "products": 9334,
+    "sizeMB": 0.3
+  },
+  {
+    "id": "russia",
+    "name": "Russia",
+    "flag": "🇷🇺",
+    "products": 9152,
+    "sizeMB": 0.2
+  },
+  {
+    "id": "norway",
+    "name": "Norway",
+    "flag": "🇳🇴",
+    "products": 8403,
+    "sizeMB": 0.2
+  },
+  {
+    "id": "finland",
+    "name": "Finland",
+    "flag": "🇫🇮",
+    "products": 8094,
+    "sizeMB": 0.2
+  },
+  {
+    "id": "brazil",
+    "name": "Brazil",
+    "flag": "🇧🇷",
+    "products": 6919,
+    "sizeMB": 0.2
+  },
+  {
+    "id": "argentina",
+    "name": "Argentina",
+    "flag": "🇦🇷",
+    "products": 6545,
+    "sizeMB": 0.2
+  },
+  {
+    "id": "denmark",
+    "name": "Denmark",
+    "flag": "🇩🇰",
+    "products": 6167,
+    "sizeMB": 0.1
+  },
+  {
+    "id": "new-zealand",
+    "name": "New Zealand",
+    "flag": "🇳🇿",
+    "products": 5309,
+    "sizeMB": 0.1
+  },
+  {
+    "id": "japan",
+    "name": "Japan",
+    "flag": "🇯🇵",
+    "products": 4248,
+    "sizeMB": 0.1
   }
 ]
