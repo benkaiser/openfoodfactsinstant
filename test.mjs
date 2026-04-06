@@ -38,8 +38,8 @@ test(`contains ≥ ${MIN_PRODUCTS.toLocaleString()} products (has ${count.toLoca
 });
 
 const fileSizeMB = fs.statSync(DATA_FILE).size / (1024 * 1024);
-test(`file size is reasonable: ${fileSizeMB.toFixed(1)} MB (expect 0.5–20 MB)`, () => {
-  assert(fileSizeMB >= 0.5 && fileSizeMB <= 20, `File is ${fileSizeMB.toFixed(2)} MB`);
+test(`file size is reasonable: ${fileSizeMB.toFixed(1)} MB (expect 0.1–20 MB)`, () => {
+  assert(fileSizeMB >= 0.1 && fileSizeMB <= 20, `File is ${fileSizeMB.toFixed(2)} MB`);
 });
 
 console.log('\n2. Schema validation\n');

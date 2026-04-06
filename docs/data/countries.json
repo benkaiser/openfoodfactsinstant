@@ -3,77 +3,77 @@
     "id": "france",
     "name": "France",
     "flag": "🇫🇷",
-    "products": 100000,
-    "sizeMB": 3.3
-  },
-  {
-    "id": "united-states",
-    "name": "United States",
-    "flag": "🇺🇸",
-    "products": 100000,
-    "sizeMB": 2.4
+    "products": 584965,
+    "sizeMB": 17.1
   },
   {
     "id": "germany",
     "name": "Germany",
     "flag": "🇩🇪",
-    "products": 100000,
-    "sizeMB": 3
+    "products": 191678,
+    "sizeMB": 5.4
   },
   {
     "id": "spain",
     "name": "Spain",
     "flag": "🇪🇸",
-    "products": 100000,
-    "sizeMB": 2.9
+    "products": 137381,
+    "sizeMB": 3.8
   },
   {
-    "id": "italy",
-    "name": "Italy",
-    "flag": "🇮🇹",
-    "products": 100000,
-    "sizeMB": 2.7
+    "id": "united-states",
+    "name": "United States",
+    "flag": "🇺🇸",
+    "products": 134684,
+    "sizeMB": 3.1
   },
   {
     "id": "united-kingdom",
     "name": "United Kingdom",
     "flag": "🇬🇧",
-    "products": 100000,
-    "sizeMB": 2.9
-  },
-  {
-    "id": "canada",
-    "name": "Canada",
-    "flag": "🇨🇦",
-    "products": 100000,
-    "sizeMB": 2.6
-  },
-  {
-    "id": "switzerland",
-    "name": "Switzerland",
-    "flag": "🇨🇭",
-    "products": 100000,
+    "products": 99392,
     "sizeMB": 2.8
+  },
+  {
+    "id": "italy",
+    "name": "Italy",
+    "flag": "🇮🇹",
+    "products": 88142,
+    "sizeMB": 2.4
   },
   {
     "id": "belgium",
     "name": "Belgium",
     "flag": "🇧🇪",
-    "products": 99922,
-    "sizeMB": 2.8
+    "products": 54304,
+    "sizeMB": 1.6
   },
   {
-    "id": "australia",
-    "name": "Australia",
-    "flag": "🇦🇺",
-    "products": 71326,
-    "sizeMB": 1.4
+    "id": "switzerland",
+    "name": "Switzerland",
+    "flag": "🇨🇭",
+    "products": 53320,
+    "sizeMB": 1.6
+  },
+  {
+    "id": "canada",
+    "name": "Canada",
+    "flag": "🇨🇦",
+    "products": 30677,
+    "sizeMB": 0.9
   },
   {
     "id": "netherlands",
     "name": "Netherlands",
     "flag": "🇳🇱",
-    "products": 61179,
-    "sizeMB": 1.3
+    "products": 22585,
+    "sizeMB": 0.6
+  },
+  {
+    "id": "australia",
+    "name": "Australia",
+    "flag": "🇦🇺",
+    "products": 19984,
+    "sizeMB": 0.5
   }
 ]

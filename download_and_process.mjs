@@ -2,26 +2,9 @@
 
 /**
  * Downloads the latest Open Food Facts CSV export and uses DuckDB
- * to rapidly filter and export per-country JSON files.
+ * to rapidly filter and export per-country Parquet files.
  *
- * Columns exported (compact keys):
- *   c  = barcode (code)
- *   n  = product name
- *   i  = image path (suffix after standard OFF prefix)
- *   e  = energy kcal per 100g
- *   f  = fat per 100g
- *   sf = saturated fat per 100g
- *   cb = carbs per 100g
- *   su = sugars per 100g
- *   fi = fiber per 100g
- *   p  = protein per 100g
- *   sa = salt per 100g
- *   g  = nutriscore grade (a-e)
- *   sc = unique scan count
- *
- * Usage:
- *   node download_and_process.mjs                     # All configured countries
- *   node download_and_process.mjs --country australia
+ * Only includes products with at least 1 scan (popularity signal).
  *
  * Requires: duckdb CLI (brew install duckdb)
  */
@@ -34,7 +17,6 @@ import http from 'http';
 const CSV_URL = 'https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz';
 const LOCAL_GZ = 'openfoodfacts.csv.gz';
 const OUTPUT_DIR = 'docs/data';
-const MAX_PRODUCTS = 100000;
 const IMG_PREFIX = 'https://images.openfoodfacts.org/images/products/';
 
 const COUNTRIES = {
@@ -91,77 +73,88 @@ async function downloadFile(url, dest) {
   });
 }
 
-function duckRun(sql) {
-  return execSync('duckdb', {
-    input: sql,
-    encoding: 'utf-8',
-    stdio: ['pipe', 'pipe', 'pipe'],
-    maxBuffer: 50 * 1024 * 1024,
-    timeout: 300000,
-  });
-}
-
-function duckQuery(sql) {
-  return execSync('duckdb -csv -noheader', {
-    input: sql,
-    encoding: 'utf-8',
-    stdio: ['pipe', 'pipe', 'pipe'],
-    maxBuffer: 50 * 1024 * 1024,
-    timeout: 300000,
-  }).trim();
-}
-
 function processWithDuckDB(selectedCountries) {
   mkdirSync(OUTPUT_DIR, { recursive: true });
 
-  console.log(`\nProcessing ${selectedCountries.length} countries with DuckDB...\n`);
+  console.log(`\nProcessing ${selectedCountries.length} countries with DuckDB (single pass)...\n`);
   const startTime = Date.now();
 
   const prefixLen = IMG_PREFIX.length;
   const validGrades = `('a','b','c','d','e')`;
-  const manifest = [];
 
-  for (const countryId of selectedCountries) {
+  // Build one big SQL script that:
+  // 1. Configures memory settings
+  // 2. Loads CSV once into a temp table with only the columns we need
+  // 3. Exports each country as a separate parquet file
+  const exportStatements = selectedCountries.map(countryId => {
     const info = COUNTRIES[countryId] || { name: countryId, flag: '🌐', match: countryId };
     const matchPattern = `%${info.match}%`;
+    return `
+COPY (
+  SELECT c, n, i, e, f, sf, cb, su, fi, p, sa, g, sc
+  FROM staging
+  WHERE (LOWER(countries_tags) LIKE '${matchPattern}' OR LOWER(countries) LIKE '${matchPattern}')
+  ORDER BY sc DESC NULLS LAST
+) TO '${OUTPUT_DIR}/${countryId}.parquet' (FORMAT PARQUET, COMPRESSION ZSTD);`;
+  }).join('\n');
+
+  const sql = `
+SET memory_limit = '4GB';
+SET threads TO 8;
+SET preserve_insertion_order = false;
+
+CREATE TEMP TABLE staging AS
+SELECT
+  code AS c,
+  product_name AS n,
+  countries_tags,
+  countries,
+  CASE WHEN image_small_url LIKE '${IMG_PREFIX}%'
+       THEN SUBSTRING(image_small_url, ${prefixLen + 1})
+       ELSE NULL END AS i,
+  CASE WHEN "energy-kcal_100g" != '' THEN ROUND(TRY_CAST("energy-kcal_100g" AS DOUBLE), 1) ELSE NULL END AS e,
+  CASE WHEN fat_100g != '' THEN ROUND(TRY_CAST(fat_100g AS DOUBLE), 1) ELSE NULL END AS f,
+  CASE WHEN "saturated-fat_100g" != '' THEN ROUND(TRY_CAST("saturated-fat_100g" AS DOUBLE), 1) ELSE NULL END AS sf,
+  CASE WHEN carbohydrates_100g != '' THEN ROUND(TRY_CAST(carbohydrates_100g AS DOUBLE), 1) ELSE NULL END AS cb,
+  CASE WHEN sugars_100g != '' THEN ROUND(TRY_CAST(sugars_100g AS DOUBLE), 1) ELSE NULL END AS su,
+  CASE WHEN fiber_100g != '' THEN ROUND(TRY_CAST(fiber_100g AS DOUBLE), 1) ELSE NULL END AS fi,
+  CASE WHEN proteins_100g != '' THEN ROUND(TRY_CAST(proteins_100g AS DOUBLE), 1) ELSE NULL END AS p,
+  CASE WHEN salt_100g != '' THEN ROUND(TRY_CAST(salt_100g AS DOUBLE), 1) ELSE NULL END AS sa,
+  CASE WHEN LOWER(nutriscore_grade) IN ${validGrades} THEN LOWER(nutriscore_grade) ELSE NULL END AS g,
+  TRY_CAST(unique_scans_n AS INTEGER) AS sc
+FROM read_csv('${LOCAL_GZ}',
+  delim='\\t', header=true, quote='', ignore_errors=true, all_varchar=true
+)
+WHERE (code IS NOT NULL AND code != '' OR product_name IS NOT NULL AND product_name != '')
+  AND unique_scans_n != '' AND TRY_CAST(unique_scans_n AS INTEGER) > 0;
+
+${exportStatements}
+`;
+
+  console.log('  Loading CSV into memory and exporting...');
+  execSync('duckdb', {
+    input: sql,
+    stdio: ['pipe', 'pipe', 'inherit'],  // show stderr for progress
+    maxBuffer: 50 * 1024 * 1024,
+    timeout: 600000,
+  });
+
+  const loadTime = ((Date.now() - startTime) / 1000).toFixed(1);
+  console.log(`  CSV loaded and exported in ${loadTime}s\n`);
+
+  // Build manifest by reading the parquet files
+  const manifest = [];
+  for (const countryId of selectedCountries) {
+    const info = COUNTRIES[countryId] || { name: countryId, flag: '🌐', match: countryId };
     const outFile = `${OUTPUT_DIR}/${countryId}.parquet`;
-
-    process.stdout.write(`  ${info.flag} ${info.name}...`);
-
-    const sql = `
-      COPY (
-        SELECT
-          code AS c,
-          product_name AS n,
-          CASE WHEN image_small_url LIKE '${IMG_PREFIX}%'
-               THEN SUBSTRING(image_small_url, ${prefixLen + 1})
-               ELSE NULL END AS i,
-          CASE WHEN "energy-kcal_100g" != '' THEN ROUND(CAST("energy-kcal_100g" AS DOUBLE), 1) ELSE NULL END AS e,
-          CASE WHEN fat_100g != '' THEN ROUND(CAST(fat_100g AS DOUBLE), 1) ELSE NULL END AS f,
-          CASE WHEN "saturated-fat_100g" != '' THEN ROUND(CAST("saturated-fat_100g" AS DOUBLE), 1) ELSE NULL END AS sf,
-          CASE WHEN carbohydrates_100g != '' THEN ROUND(CAST(carbohydrates_100g AS DOUBLE), 1) ELSE NULL END AS cb,
-          CASE WHEN sugars_100g != '' THEN ROUND(CAST(sugars_100g AS DOUBLE), 1) ELSE NULL END AS su,
-          CASE WHEN fiber_100g != '' THEN ROUND(CAST(fiber_100g AS DOUBLE), 1) ELSE NULL END AS fi,
-          CASE WHEN proteins_100g != '' THEN ROUND(CAST(proteins_100g AS DOUBLE), 1) ELSE NULL END AS p,
-          CASE WHEN salt_100g != '' THEN ROUND(CAST(salt_100g AS DOUBLE), 1) ELSE NULL END AS sa,
-          CASE WHEN LOWER(nutriscore_grade) IN ${validGrades} THEN LOWER(nutriscore_grade) ELSE NULL END AS g,
-          CASE WHEN unique_scans_n != '' AND CAST(unique_scans_n AS INTEGER) > 0 THEN CAST(unique_scans_n AS INTEGER) ELSE NULL END AS sc
-        FROM read_csv('${LOCAL_GZ}',
-          delim='\\t', header=true, quote='', ignore_errors=true, all_varchar=true
-        )
-        WHERE (LOWER(countries_tags) LIKE '${matchPattern}' OR LOWER(countries) LIKE '${matchPattern}')
-          AND (code IS NOT NULL AND code != '' OR product_name IS NOT NULL AND product_name != '')
-        ORDER BY sc DESC NULLS LAST
-        LIMIT ${MAX_PRODUCTS}
-      ) TO '${outFile}' (FORMAT PARQUET, COMPRESSION ZSTD);
-    `;
-
-    duckRun(sql);
-
     const stat = statSync(outFile);
     const sizeMB = stat.size / (1024 * 1024);
 
-    const countResult = duckQuery(`SELECT count(*) FROM '${outFile}';`);
+    const countResult = execSync('duckdb -csv -noheader', {
+      input: `SELECT count(*) FROM '${outFile}';`,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
     const productCount = parseInt(countResult, 10);
 
     manifest.push({
@@ -172,7 +165,7 @@ function processWithDuckDB(selectedCountries) {
       sizeMB: Math.round(sizeMB * 10) / 10,
     });
 
-    console.log(` ${productCount.toLocaleString()} products, ${sizeMB.toFixed(1)} MB`);
+    console.log(`  ${info.flag} ${info.name}: ${productCount.toLocaleString()} products (${sizeMB.toFixed(1)} MB)`);
   }
 
   manifest.sort((a, b) => b.products - a.products);
