@@ -2,16 +2,16 @@
 
 A fast, client-side searchable database of food products from [Open Food Facts](https://world.openfoodfacts.org/), covering 30 countries.
 
-Search over 1.6 million food products instantly in your browser — no server required.
+Search over 1.6 million food products instantly in your browser — no server required. Choose a specific country or search the entire global database.
 
 **[Try it live →](https://benkaiser.github.io/openfoodfactsinstant/)**
 
 ## Features
 
 - **Instant search**: Full-text search across product names and barcodes (including substring)
-- **30 countries**: From France (585k products) to Japan (4k products)
+- **30 countries + global**: Individual country databases or a single 1.58M product global database
 - **No backend**: Runs entirely in the browser using [DuckDB-WASM](https://duckdb.org/docs/api/wasm/overview)
-- **Tiny downloads**: Parquet + ZSTD compression — Australia is 497KB, most countries are under 4MB
+- **Tiny downloads**: Parquet + ZSTD compression — Australia is 497KB, global is 43MB
 - **Nutritional info**: Macro pie chart, energy, Nutri-Score grade, per 100g/ml
 - **Barcode scanner**: Camera-based barcode scanning using [html5-qrcode](https://github.com/nicknisi/html5-qrcode)
 - **Product links**: Click any product name to view it on Open Food Facts

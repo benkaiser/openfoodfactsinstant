@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project creates a condensed, client-side searchable database of food products from [Open Food Facts](https://world.openfoodfacts.org/), covering 30 countries. Products are filtered to those with at least one community scan, compressed into Parquet files, and served as a static website with instant full-text search.
+This project creates a condensed, client-side searchable database of food products from [Open Food Facts](https://world.openfoodfacts.org/), covering 30 countries plus a global all-countries database. Products are filtered to those with at least one community scan, compressed into Parquet files, and served as a static website with instant full-text search.
 
 ## Design Decisions
 
@@ -23,7 +23,7 @@ Individual country datasets (0.1–17 MB as Parquet) are small enough to load en
 Parquet with ZSTD compression provides dramatic size reductions compared to JSON:
 - Australia: 14 MB JSON → **497 KB** Parquet (97% reduction)
 - France: 384 MB JSON → **17 MB** Parquet (96% reduction)
-- 30 countries total: **46 MB**
+- 30 countries total: **46 MB**, plus a global all.parquet: **43 MB**
 
 ### Why Filter to Scanned Products?
 
@@ -50,7 +50,7 @@ download_and_process.mjs
     │  - Filters: ≥1 scan, valid barcode or name
     │  - Extracts essential fields with compact keys
     │  - Strips image URL prefix (reconstructed in browser)
-    │  - Exports 30 country Parquet files (ZSTD compressed)
+    │  - Exports 30 country Parquet files + global all.parquet (ZSTD compressed)
     │  - Generates countries.json manifest
     ▼
 docs/data/*.parquet (46 MB total)
@@ -83,6 +83,7 @@ openfoodfactsinstant/
 │   ├── index.html           # Single-page app
 │   └── data/
 │       ├── countries.json   # Country manifest
+│       ├── all.parquet       # Global (all scanned products)
 │       ├── australia.parquet
 │       ├── france.parquet
 │       └── ... (30 countries)
